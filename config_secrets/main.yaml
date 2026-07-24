@@ -1,0 +1,96 @@
+# ConfigMaps + Secrets demo
+# Apply everything:
+#   kubectl apply -f main.yaml
+# Or piece by piece:
+#   kubectl apply -f main.yaml   # ConfigMap + cm-demo pod
+#   kubectl apply -f cm-pod.yaml # pod-only (expects my-config already exists)
+#   kubectl apply -f secret.yaml # Secret + secret-demo pod
+
+# --- ConfigMap ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config
+data:
+  app_colour: blue
+  app_mode: production
+---
+# Pod: ConfigMap as env vars + as files under /etc/config
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cm-demo
+spec:
+  containers:
+    - name: demo-container
+      image: busybox
+      command: ["/bin/sh", "-c", "env && ls -la /etc/config && sleep 3600"]
+      env:
+        - name: APP_COLOUR
+          valueFrom:
+            configMapKeyRef:
+              name: my-config
+              key: app_colour
+        - name: APP_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: my-config
+              key: app_mode
+      volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+  volumes:
+    - name: config-volume
+      configMap:
+        name: my-config
+---
+# --- Secret ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+type: Opaque
+stringData:
+  username: admin
+  password: s3cr3t
+---
+# Pod: Secret as env vars + as files under /etc/secret
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-demo
+spec:
+  containers:
+    - name: demo-container
+      image: busybox
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo "env USERNAME=$USERNAME"
+          echo "secret files:"
+          ls -la /etc/secret
+          cat /etc/secret/username
+          echo
+          cat /etc/secret/password
+          echo
+          sleep 3600
+      env:
+        - name: USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: my-secret
+              key: username
+        - name: PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: my-secret
+              key: password
+      volumeMounts:
+        - name: secret-volume
+          mountPath: /etc/secret
+          readOnly: true
+  volumes:
+    - name: secret-volume
+      secret:
+        secretName: my-secret

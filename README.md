@@ -1,6 +1,6 @@
 # Kubernetes
 
-Kubernetes is an open-source container orchestration platform designed to automate deploying, scaling, and operating application containers.
+Kubernetes is an open-source container orchestration platform designed to automate deploying, scaling, and operating application containers.This repository will cover how we are learning about using kubernetes. it will also talk about the core components of kubernetes and the key concepts.
 
 ## Overview
 
@@ -9,7 +9,6 @@ Kubernetes, often abbreviated as K8s, provides a framework to run distributed sy
 ## Core Components
 
 - **Control Plane**: Brain of the Kubernetes cluster
-
   - API Server: Front-end for the Kubernetes control plane
   - etcd: Consistent and highly-available key-value store
   - Scheduler: Watches for newly created pods with no assigned node
@@ -31,7 +30,7 @@ Kubernetes, often abbreviated as K8s, provides a framework to run distributed sy
 
 ## Getting Started
 
-1. Install kubectl and a Kubernetes environment (Minikube, Docker Desktop, etc.)
+1. Install kubectl and a Kubernetes environment (Minikube, kind,Docker Desktop, etc.)
 2. Create deployments using YAML configuration files
 3. Expose your applications with Services
 4. Scale your applications as needed

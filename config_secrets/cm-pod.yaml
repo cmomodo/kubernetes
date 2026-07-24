@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cm-demo
+spec:
+  containers:
+    - name: demo-container
+      image: busybox
+      command: ["/bin/sh", "-c", "env && ls -la /etc/config && sleep 3600"]
+      env:
+        - name: APP_COLOUR
+          valueFrom:
+            configMapKeyRef:
+              name: my-config
+              key: app_colour
+        - name: APP_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: my-config
+              key: app_mode
+      volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+  volumes:
+    - name: config-volume
+      configMap:
+        name: my-config

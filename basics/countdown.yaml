@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: countdown-pod
+spec:
+  initContainers:
+  - name: init-countdown
+    image: busybox
+    command: ['sh', '-c', 'for i in \$(seq 120 -1 0); do echo init-countdown: \$i; sleep 1; done']
+
+  containers:
+  - name: main-container
+    image: busybox
+    command: ['sh', '-c', 'while true; do count=\$((count + 1)); echo main-container: sleeping for 30 seconds - iteration \$count; sleep 30; done']
+
