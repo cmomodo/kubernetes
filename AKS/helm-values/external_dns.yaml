@@ -1,0 +1,15 @@
+provider: aws
+
+env:
+  AWS_REGION: eu-west-2
+
+domainFilters:
+  - ceedev.co.uk
+
+txtOwnerId: "external-dns"
+
+policy:
+  type: sync
+  domain_filters:
+    - coderco.co.uk
+  txt_owner_id: "external-dns"

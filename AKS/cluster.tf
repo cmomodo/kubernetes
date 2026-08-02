@@ -5,7 +5,7 @@ module "eks" {
   name               = "aks-cluster"
   kubernetes_version = "1.33"
 
-  endpoint_public_access       = true
+  endpoint_public_access = true
   # Restrict this to your IP/CIDR before production use (default is 0.0.0.0/0)
   # endpoint_public_access_cidrs = ["x.x.x.x/32"]
 

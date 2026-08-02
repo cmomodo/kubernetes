@@ -1,0 +1,14 @@
+ingressShim:
+  defaultACMEChallengeType: dns01
+  defaultDNS01SolverName: route53
+
+extraArgs:
+  - dns01-recursive-nameservers=8.8.8.8:53,8.8.4.4:53
+  - dns01-recursive-nameservers-only
+
+# Set this from Terraform after apply:
+#   terraform output -raw cert_manager_role_arn
+# Or prefer wiring via helm_release set = [...] so it stays in sync.
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "" # replace with module.cert_manager_irsa.iam_role_arn

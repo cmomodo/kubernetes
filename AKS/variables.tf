@@ -1,5 +1,1 @@
-#domain variables
-variable "domain_name" {
-  type        = string
-  description = "The domain name to use for the cluster"
-}
+# Add variables here when you wire Day-2 add-ons (domain, etc.).
