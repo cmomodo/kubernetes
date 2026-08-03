@@ -1,6 +1,6 @@
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.0"
+  version = "~> 6.0"
 
   name = "aks-vpc"
   cidr = "10.0.0.0/16"
@@ -10,9 +10,9 @@ module "vpc" {
   public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
 
   enable_nat_gateway = true
-  # One NAT gateway per AZ avoids a single-AZ egress dependency for private subnets.
-  single_nat_gateway     = false
-  one_nat_gateway_per_az = true
+  # Single NAT gateway in the first AZ reduces costs but creates an egress bottleneck.
+  single_nat_gateway     = true
+  one_nat_gateway_per_az = false
   enable_dns_hostnames   = true
   enable_dns_support     = true
 

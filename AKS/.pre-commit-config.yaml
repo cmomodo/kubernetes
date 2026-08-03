@@ -1,5 +1,10 @@
 # Enforce Terraform formatting before pushes.
 repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.2
+    hooks:
+      - id: gitleaks
+
   - repo: local
     hooks:
       - id: terraform-fmt-check

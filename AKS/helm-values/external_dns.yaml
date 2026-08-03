@@ -1,15 +1,17 @@
-provider: aws
+provider:
+  name: aws
 
 env:
-  AWS_REGION: eu-west-2
+  - name: AWS_REGION
+    value: us-east-1
 
 domainFilters:
-  - ceedev.co.uk
+  - "${domain_name}"
 
 txtOwnerId: "external-dns"
 
-policy:
-  type: sync
-  domain_filters:
-    - coderco.co.uk
-  txt_owner_id: "external-dns"
+policy: sync
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "${external_dns_role_arn}"

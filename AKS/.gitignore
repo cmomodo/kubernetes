@@ -30,3 +30,9 @@ terraform.rc
 # Local editors / OS
 .DS_Store
 .idea
+
+#ignore hcl lock file
+.terraform.lock.hcl
+
+ignore node_modules
+noco.db
