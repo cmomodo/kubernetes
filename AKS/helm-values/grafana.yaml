@@ -29,7 +29,7 @@ sidecar:
 
 grafana.ini:
   server:
-    root_url: https://grafana.${domain_name}
+    root_url: https://grafana.ceedev.co.uk
   security:
     cookie_secure: true
   users:

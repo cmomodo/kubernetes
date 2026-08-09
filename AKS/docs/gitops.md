@@ -13,9 +13,16 @@ The Helm installer installs Argo CD and applies the root Application:
 ./scripts/install-platform-addons.sh
 ```
 
-The root Application watches `gitops/applications`. It creates the child
-Applications, which then watch their workload directories. This includes the
-Argo CD UI certificate and route under `gitops/workloads/argocd`.
+The root Application watches `gitops/applications` and creates the child
+Applications. Manifest-based Applications then watch their workload
+directories; this includes the Argo CD UI certificate and route under
+`gitops/workloads/argocd`. The Grafana Application deploys its pinned Helm
+chart with values from `helm-values/grafana.yaml`.
+
+Grafana reads its admin credentials from the `grafana-admin` Secret in the
+`monitoring` namespace. Provision that Secret with the `admin-user` and
+`admin-password` keys through the cluster's secret-management workflow before
+the first Grafana sync.
 
 ## Normal application changes
 
@@ -27,6 +34,7 @@ Check status with:
 ```bash
 kubectl -n argocd get applications
 kubectl -n argocd describe application nginx-test
+kubectl -n argocd describe application grafana
 ```
 
 Do not use `kubectl apply` or Terraform for resources owned by an Argo CD
