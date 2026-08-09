@@ -15,7 +15,7 @@ flowchart TB
             subgraph Private[Three private subnets]
                 EKS[EKS control plane and<br/>Auto Mode compute]
                 Traefik[Traefik Pods x2<br/>entrypoints 8000/8443]
-                App[NGINX test Pod<br/>planned]
+                App[NGINX test Pod<br/>Argo CD managed]
                 NAT[Three zonal NAT gateways<br/>regional migration paused]
             end
         end
@@ -49,5 +49,5 @@ flowchart TB
 5. The Service selects application Pods by label and forwards traffic to one
    of their Pod IPs.
 
-The NGINX application path is planned but not deployed at the time this
-document was written. The currently reachable platform component is Traefik.
+The NGINX application is defined under `gitops/workloads/nginx-test` and is
+deployed by the Argo CD child Application under `gitops/applications`.

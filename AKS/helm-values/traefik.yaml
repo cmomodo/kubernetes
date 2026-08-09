@@ -1,5 +1,5 @@
 # Traefik Helm values
-# Templated by helm.tf — acm_certificate_arn is injected via templatefile().
+# The local Helm installer overrides acm_certificate_arn at install time.
 
 deployment:
   replicas: 2

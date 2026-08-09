@@ -2,38 +2,41 @@
 
 ## Ownership model
 
-Terraform owns the Helm releases. The `helm_release` resources in `helm.tf`
-render the YAML files in `helm-values/` and send the resulting values to the
-Helm provider. Helm then creates and upgrades Kubernetes objects such as
-Deployments, Services, ServiceAccounts, RBAC objects, CRDs, and ConfigMaps.
-
-This provides one source of truth:
+Terraform owns AWS infrastructure only. Helm is installed and run locally;
+the `scripts/install-platform-addons.sh` script manages cert-manager,
+ExternalDNS, Traefik, and Argo CD with `helm upgrade --install`.
 
 ```text
-Terraform configuration → rendered Helm values → Helm release → Kubernetes resources
+Terraform AWS outputs → local Helm CLI → Helm release → Kubernetes resources
 ```
 
-The values files are templates, not standalone installs. For example,
-`templatefile()` replaces `${acm_certificate_arn}` with the ACM certificate
-ARN before the Traefik chart is installed. The ExternalDNS template similarly
-receives the Route53 domain and its IAM role ARN.
+This deliberately keeps Helm release records out of the Terraform backend.
+Helm stores its release metadata in the Kubernetes cluster, while Terraform
+continues to store only AWS infrastructure in its remote state. The values in
+`helm-values/` are shared defaults; the script supplies the AWS-specific
+values as Helm overrides.
 
 ## Bootstrap order
 
 Some Kubernetes custom resources cannot be planned until their CRDs are
 already registered in the API server. The safe first-install order is:
 
-1. Apply `helm_release.cert_manager`. This installs cert-manager and its
-   `Certificate` and `ClusterIssuer` CRDs.
-2. Apply `helm_release.traefik`. This installs Traefik and its
-   `IngressRoute` CRD.
-3. Run the normal, full `terraform apply` after both CRD sets are visible.
-   It can then create the `ClusterIssuer`, `Certificate`, IngressRoute,
-   ExternalDNS release, and application resources.
+1. Apply Terraform to create or update the AWS infrastructure.
+2. Run the local installer:
 
-The targeted bootstrap applies are only needed for the first installation or
-to recover a missing CRD. Later changes should use a normal Terraform plan and
-apply rather than `-target`.
+   ```bash
+   ./scripts/install-platform-addons.sh
+   ```
+
+   The installer reads its AWS-specific values directly from Terraform
+   outputs, configures `kubectl` for `aks-cluster`, installs cert-manager and
+   its CRDs, applies the ClusterIssuer, then installs ExternalDNS, Traefik,
+   and Argo CD. Finally, it applies the GitOps root Application. Set
+   `CLUSTER_NAME` or `AWS_REGION` to override their defaults. Set
+   `BOOTSTRAP_GITOPS=false` to skip the root Application.
+
+The script is idempotent. Run it again to upgrade the pinned chart versions or
+to reconcile their configuration.
 
 ## Cert-manager
 
@@ -79,11 +82,31 @@ Check release and workload status:
 ```bash
 helm -n cert-manager status cert-manager
 helm -n traefik status traefik
+helm -n argocd status argocd
 kubectl -n cert-manager get pods
 kubectl -n traefik rollout status deployment/traefik
 kubectl -n traefik get pods,svc
 ```
 
-Terraform normally performs Helm upgrades. The equivalent Helm action is an
-`upgrade --install` using the rendered values, although it is intentionally
-managed through Terraform rather than run manually.
+Use the installer for chart upgrades; do not add `helm_release` resources or a
+Helm provider to Terraform.
+
+## Migrating an existing Terraform-managed Helm installation
+
+First run the local installer so the existing Helm releases are reconciled by
+the CLI. Then remove only the former Helm and add-on entries from Terraform
+state. This detaches them without uninstalling anything:
+
+```bash
+terraform state rm 'helm_release.cert_manager'
+terraform state rm 'helm_release.external_dns'
+terraform state rm 'helm_release.traefik'
+terraform state rm 'kubernetes_namespace.cert_manager'
+terraform state rm 'kubernetes_namespace.external_dns'
+terraform state rm 'kubernetes_namespace.traefik'
+terraform state rm 'kubernetes_manifest.letsencrypt_issuer'
+```
+
+Run `terraform state list` first. Addresses that are absent from the state do
+not need a removal command. If the command returns no addresses, no state
+migration is required.

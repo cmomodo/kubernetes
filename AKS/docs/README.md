@@ -1,6 +1,8 @@
 # EKS platform documentation
 
 - [Traefik and Helm installation](traefik-and-helm.md)
+- [Reusable deployment and destroy workflow](deployment.md)
+- [GitOps workflow](gitops.md)
 - [Networking](networking.md)
 - [Architecture](architecture.md)
 
