@@ -1,0 +1,36 @@
+service:
+  type: ClusterIP
+
+persistence:
+  enabled: true
+  storageClassName: gp3
+  size: 10Gi
+
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+sidecar:
+  dashboards:
+    enabled: true
+    searchNamespace: ALL
+  datasources:
+    enabled: true
+    searchNamespace: ALL
+
+grafana.ini:
+  server:
+    root_url: https://grafana.${domain_name}
+  security:
+    cookie_secure: true
+  users:
+    allow_sign_up: false
