@@ -6,8 +6,6 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cluster_name="${CLUSTER_NAME:-aks-cluster}"
-aws_region="${AWS_REGION:-us-east-1}"
 bootstrap_gitops="${BOOTSTRAP_GITOPS:-true}"
 
 cert_manager_chart_version="${CERT_MANAGER_CHART_VERSION:-1.15.3}"
@@ -34,6 +32,8 @@ terraform_output() {
 
 # Environment variables remain available as overrides, but the normal path is
 # fully automatic after Terraform has created the AWS infrastructure.
+cluster_name="${CLUSTER_NAME:-$(terraform_output cluster_name)}"
+aws_region="${AWS_REGION:-$(terraform_output aws_region)}"
 acm_certificate_arn="${ACM_CERTIFICATE_ARN:-$(terraform_output acm_certificate_arn)}"
 cert_manager_role_arn="${CERT_MANAGER_ROLE_ARN:-$(terraform_output cert_manager_role_arn)}"
 domain_name="${DOMAIN_NAME:-$(terraform_output domain_name)}"

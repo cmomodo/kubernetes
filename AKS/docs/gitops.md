@@ -1,6 +1,7 @@
 # GitOps workflow
 
-Terraform bootstraps AWS infrastructure (EKS, IAM, Route53, and ACM). The
+Terraform bootstraps AWS infrastructure (EKS, IAM, EKS Pod Identity, Secrets
+Manager, Route53, and ACM). The
 local Helm workflow installs shared platform controllers (cert-manager,
 ExternalDNS, and Traefik). Argo CD owns the application resources under
 `gitops/`.
@@ -13,16 +14,17 @@ The Helm installer installs Argo CD and applies the root Application:
 ./scripts/install-platform-addons.sh
 ```
 
-The root Application watches `gitops/applications` and creates the child
-Applications. Manifest-based Applications then watch their workload
-directories; this includes the Argo CD UI certificate and route under
-`gitops/workloads/argocd`. The Grafana Application deploys its pinned Helm
-chart with values from `helm-values/grafana.yaml`.
+The root Application watches `gitops/applications` recursively and creates the
+child Applications in sync-wave order. External Secrets Operator is installed
+first, followed by the AWS `ClusterSecretStore`, the Grafana `ExternalSecret`,
+and finally Grafana. The operator receives AWS credentials through the EKS Pod
+Identity association managed by Terraform; no account ID or role ARN is stored
+in the GitOps manifests.
 
 Grafana reads its admin credentials from the `grafana-admin` Secret in the
-`monitoring` namespace. Provision that Secret with the `admin-user` and
-`admin-password` keys through the cluster's secret-management workflow before
-the first Grafana sync.
+`monitoring` namespace. Terraform creates the source value in AWS Secrets
+Manager, and External Secrets materializes its `admin-user` and
+`admin-password` fields as the Kubernetes Secret.
 
 ## Normal application changes
 
@@ -33,8 +35,9 @@ Check status with:
 
 ```bash
 kubectl -n argocd get applications
-kubectl -n argocd describe application nginx-test
-kubectl -n argocd describe application grafana
+kubectl get clustersecretstore aws-secrets-manager
+kubectl -n monitoring get externalsecret grafana-admin
+kubectl -n monitoring get secret grafana-admin
 ```
 
 Do not use `kubectl apply` or Terraform for resources owned by an Argo CD

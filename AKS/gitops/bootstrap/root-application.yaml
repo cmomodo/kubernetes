@@ -12,6 +12,8 @@ spec:
     repoURL: https://github.com/cmomodo/kubernetes.git
     targetRevision: main
     path: AKS/gitops/applications
+    directory:
+      recurse: true
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

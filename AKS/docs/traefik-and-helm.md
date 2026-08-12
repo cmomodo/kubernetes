@@ -29,14 +29,18 @@ already registered in the API server. The safe first-install order is:
    ```
 
    The installer reads its AWS-specific values directly from Terraform
-   outputs, configures `kubectl` for `aks-cluster`, installs cert-manager and
-   its CRDs, applies the ClusterIssuer, then installs ExternalDNS, Traefik,
+   outputs, configures `kubectl` for the created cluster, installs cert-manager
+   and its CRDs, applies the ClusterIssuer, then installs ExternalDNS, Traefik,
    and Argo CD. Finally, it applies the GitOps root Application. Set
-   `CLUSTER_NAME` or `AWS_REGION` to override their defaults. Set
+   `CLUSTER_NAME` or `AWS_REGION` to override the Terraform outputs. Set
    `BOOTSTRAP_GITOPS=false` to skip the root Application.
 
 The script is idempotent. Run it again to upgrade the pinned chart versions or
 to reconcile their configuration.
+
+For a first deployment, use `./scripts/deploy-platform.sh`; it applies
+Terraform before invoking this installer and then verifies the GitOps secret
+chain.
 
 ## Cert-manager
 

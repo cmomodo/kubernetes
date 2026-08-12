@@ -1,8 +1,8 @@
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 21.0"
+  version = "21.24.2"
 
-  name               = "aks-cluster"
+  name               = var.cluster_name
   kubernetes_version = "1.33"
 
   endpoint_public_access = true
@@ -22,7 +22,17 @@ module "eks" {
   control_plane_subnet_ids = module.vpc.private_subnets
 
   tags = {
-    Environment = "dev"
+    Environment = var.environment
     Terraform   = "true"
   }
+}
+
+output "cluster_name" {
+  description = "Name of the EKS cluster"
+  value       = module.eks.cluster_name
+}
+
+output "aws_region" {
+  description = "AWS region containing the EKS cluster"
+  value       = var.aws_region
 }

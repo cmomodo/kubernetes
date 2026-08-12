@@ -28,7 +28,7 @@ resource "aws_acm_certificate" "wildcard" {
 
   tags = {
     Terraform   = "true"
-    Environment = "dev"
+    Environment = var.environment
   }
 }
 

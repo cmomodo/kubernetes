@@ -20,9 +20,11 @@ flowchart TB
             end
         end
 
-        IRSA[OIDC provider and IRSA]
+        WorkloadIdentity[IRSA and EKS Pod Identity]
         CM[cert-manager<br/>deployed]
         ED[ExternalDNS<br/>planned]
+        SM[AWS Secrets Manager<br/>grafana-admin]
+        ESO[External Secrets Operator]
     end
 
     User --> DNS
@@ -33,8 +35,10 @@ flowchart TB
     App --> NAT --> IGW
 
     EKS --> Traefik
-    IRSA --> CM
-    IRSA --> ED
+    WorkloadIdentity --> CM
+    WorkloadIdentity --> ED
+    WorkloadIdentity --> ESO
+    ESO --> SM
     CM -. DNS-01 records .-> DNS
     ED -. application DNS records .-> DNS
 ```

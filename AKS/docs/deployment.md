@@ -1,55 +1,68 @@
-# Reusable deployment and destroy workflow
+# Automated deployment and destroy workflow
 
-Terraform owns the AWS infrastructure. The local Helm CLI owns shared platform
-controllers, and Argo CD owns application resources under `gitops/`. Run
-commands from the repository root:
+Terraform owns the AWS infrastructure. The local Helm CLI installs the
+bootstrap controllers, and Argo CD owns application resources under `gitops/`.
+
+## Prerequisites
+
+- AWS CLI credentials with access to create the declared VPC, EKS, IAM,
+  Route53, ACM, and Secrets Manager resources.
+- The S3 backend bucket declared in `state.tf`.
+- A public Route53 hosted zone matching `domain_name`.
+- Terraform, AWS CLI, Helm, kubectl, and Git installed locally.
+- The deployment configuration committed and pushed to `origin/main`, because
+  Argo CD reads manifests from that branch rather than the local checkout.
+
+The state bucket and public hosted zone are account-level bootstrap resources;
+they are intentionally not created by this stack.
+
+## One-command deployment
+
+After reviewing and pushing the configuration, run:
 
 ```bash
 cd /Users/momodou/Documents/kubernetes/kubernetes/AKS
-aws eks --region us-east-1 update-kubeconfig --name aks-cluster
+./scripts/deploy-platform.sh
 ```
 
-## Normal deployment
+The script performs the complete deployment sequence:
 
-Always preview the change before applying it:
-
-```bash
-terraform init
-terraform fmt
-terraform validate
-terraform plan -out=deployment.tfplan
-terraform apply deployment.tfplan
-```
+1. Verifies that deployment files are committed and local `main` matches
+   `origin/main`.
+2. Checks AWS authentication.
+3. Runs Terraform init, formatting checks, validation, plan, and apply.
+4. Reads runtime configuration from Terraform outputs.
+5. Configures kubectl; installs cert-manager, ExternalDNS, Traefik, and Argo CD.
+6. Bootstraps the Argo CD root Application.
+7. Waits for External Secrets Operator, its AWS `ClusterSecretStore`, the
+   Grafana `ExternalSecret`, and Grafana itself to become healthy.
 
 The dependency chain is:
 
 ```text
-VPC → EKS → IAM/IRSA + ACM certificate
+VPC → EKS → IAM + Pod Identity + Secrets Manager + ACM
                              ↓
-                  Local Helm CLI: platform controllers
+                  Local Helm CLI: bootstrap controllers
                              ↓
                          Argo CD
                              ↓
-                  GitOps Applications
+        External Secrets → SecretStore → Grafana secret
                              ↓
-               Certificates/IngressRoutes
+             Grafana + Certificates/IngressRoutes
 ```
 
-After Terraform completes, install every platform chart and bootstrap the
-GitOps root Application with one command:
+To inspect the Terraform plan without deploying, run:
 
 ```bash
-./scripts/install-platform-addons.sh
+terraform init
+terraform validate
+terraform plan
 ```
 
-From that point, application changes are made in Git and synchronized by Argo
-CD. See [GitOps workflow](gitops.md) for the application workflow and the
-Terraform state migration step.
-
-Helm chart changes do not require a Terraform apply. Re-run
-`./scripts/install-platform-addons.sh`; it reads the required Terraform outputs
-automatically.
-Terraform plans should not contain Helm releases or Kubernetes add-on objects.
+The lower-level `scripts/install-platform-addons.sh` remains idempotent and can
+be run after Terraform has applied when only bootstrap controllers need to be
+reconciled. Normal application and External Secrets changes are made through
+Git and synchronized by Argo CD.
 
 ## Destroy for a temporary shutdown
 
@@ -61,8 +74,8 @@ terraform show destroy.tfplan
 ```
 
 The destroy removes all resources tracked in Terraform state, including the
-EKS cluster, VPC, NAT gateways, load balancer, IAM roles, and platform
-resources. Argo-managed application resources disappear with the cluster but
+EKS cluster, VPC, NAT gateways, IAM roles, Pod Identity association, and
+Secrets Manager secret. Argo-managed resources disappear with the cluster but
 are not individually tracked by Terraform.
 
 Only after reviewing the plan:
@@ -71,5 +84,4 @@ Only after reviewing the plan:
 terraform apply destroy.tfplan
 ```
 
-The next day, the normal deployment workflow recreates the environment from
-the configuration.
+The next deployment is recreated with `./scripts/deploy-platform.sh`.
