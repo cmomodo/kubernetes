@@ -34,29 +34,23 @@ Gateway:
 private Pod/node → private route table → NAT gateway → Internet Gateway → Internet
 ```
 
-## NAT status
+## NAT configuration
 
-The deployed VPC currently has three **zonal** NAT gateways, one in each
-Availability Zone. This is the traditional high-availability layout: a
-private subnet uses the NAT gateway in the same AZ.
-
-AWS also supports a newer single **regional** NAT gateway that spans multiple
-AZs. A conversion to that design is intentionally paused: it requires replacing
-the VPC module's zonal NAT resources with a dedicated regional
-`aws_nat_gateway` resource and changing private-subnet routes. Do not run a
-full Terraform apply for that migration until its plan has been reviewed; the
-previous plan would have removed two zonal NAT gateways without creating the
-desired regional replacement.
+The Terraform configuration creates one NAT gateway shared by the three
+private subnets. This reduces development cost but makes that gateway a shared
+egress dependency. Use one NAT gateway per Availability Zone for a production
+high-availability posture.
 
 ## DNS and certificates
 
-The Route53 hosted zone for `ceedev.co.uk` is read by Terraform. Terraform
-creates an ACM certificate for both `ceedev.co.uk` and `*.ceedev.co.uk`, then
-writes its DNS validation CNAME record to that hosted zone.
+The Route53 hosted zone for `ceedev.co.uk` is read by Terraform. ExternalDNS
+creates application records, while cert-manager requests Let's Encrypt
+certificates and stores them as Kubernetes TLS Secrets. Traefik terminates TLS
+using those Secrets; the NLB forwards TCP and does not require an ACM ARN.
 
 When applied, ExternalDNS watches annotated Ingress/IngressRoute resources
-and creates the matching Route53 records. cert-manager uses its own limited
-IRSA role to create temporary DNS-01 ACME validation records for certificates.
+and creates the matching Route53 records. cert-manager uses its limited EKS
+Pod Identity role to create temporary DNS-01 validation records.
 
 The intended application hostname is `nginx.ceedev.co.uk`. It will resolve
 only after the ExternalDNS and NGINX resources have been applied.

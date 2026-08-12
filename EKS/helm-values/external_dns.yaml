@@ -12,10 +12,7 @@ txtOwnerId: "external-dns"
 
 policy: sync
 
-# serviceAccount IRSA annotation is injected by the Argo CD Application
-# (gitops/applications/platform/external-dns.yaml) via helm.parameters.
-# For local installs, scripts/install-platform-addons.sh sets it with
-# --set-string.
+# Terraform associates this ServiceAccount with its IAM role using EKS Pod
+# Identity. No role annotation or static AWS credentials are needed here.
 serviceAccount:
   annotations: {}
-  # eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT_ID:role/external-dns-irsa"

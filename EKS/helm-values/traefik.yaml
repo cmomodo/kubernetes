@@ -1,9 +1,7 @@
 # Production-oriented Traefik overrides for chart version 29.0.1.
 #
-# The AWS ACM certificate ARN is injected by the Argo CD Application
-# (gitops/applications/platform/traefik.yaml) via helm.parameters.
-# For local installs, scripts/install-platform-addons.sh passes it with
-# --set-string. Keep this file free of placeholder ARNs.
+# TLS is passed through by the Network Load Balancer and terminated by Traefik
+# using cert-manager-managed Kubernetes Secrets.
 
 deployment:
   replicas: 2
@@ -22,8 +20,7 @@ ingressClass:
   enabled: true
   isDefaultClass: true
 
-# Expose Traefik through an internet-facing AWS Network Load Balancer. TLS is
-# terminated by the NLB with the ACM certificate supplied by the installer.
+# Expose Traefik through an internet-facing AWS Network Load Balancer.
 service:
   enabled: true
   type: LoadBalancer
@@ -31,11 +28,7 @@ service:
     service.beta.kubernetes.io/aws-load-balancer-type: "external"
     service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
     service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-    # service.beta.kubernetes.io/aws-load-balancer-ssl-cert is injected via
-    # helm.parameters (Argo) or --set-string (local script). Omit the placeholder
-    # so the file is valid YAML without substitution.
-    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
-    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+    external-dns.alpha.kubernetes.io/hostname: "argocd.ceedev.co.uk,nginx.ceedev.co.uk"
 
 ports:
   web:

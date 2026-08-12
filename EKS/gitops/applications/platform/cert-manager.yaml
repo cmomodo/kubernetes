@@ -22,13 +22,6 @@ spec:
         parameters:
           - name: crds.enabled
             value: "true"
-          # IRSA role ARN — set via CI or update in Git after terraform apply.
-          # The value must match aws_iam_role.cert_manager.arn.
-          - name: serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn
-            value: arn:aws:iam::ACCOUNT_ID:role/cert-manager-irsa
-        valuesObject: |
-          crds:
-            enabled: true
     - repoURL: https://github.com/cmomodo/kubernetes.git
       targetRevision: main
       ref: values

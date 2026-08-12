@@ -25,7 +25,6 @@ ingressRoute:
   host: nginx.ceedev.co.uk
   entryPoints:
     - websecure
-  hostname: nginx.ceedev.co.uk
   syncWave: "1"
 
 certificate:

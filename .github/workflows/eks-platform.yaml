@@ -1,0 +1,77 @@
+name: EKS platform
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "EKS/**"
+      - ".github/workflows/eks-platform.yaml"
+  pull_request:
+    paths:
+      - "EKS/**"
+      - ".github/workflows/eks-platform.yaml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Validate Terraform
+        working-directory: EKS
+        run: |
+          terraform fmt -check -recursive
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.1.5
+
+      - name: Render platform charts
+        run: |
+          helm template argocd argo-cd --repo https://argoproj.github.io/argo-helm --version 9.5.17 --values EKS/helm-values/argocd.yaml --namespace argocd >/dev/null
+          helm template cert-manager cert-manager --repo https://charts.jetstack.io --version 1.15.3 --values EKS/helm-values/cert-manager.yaml --namespace cert-manager --set crds.enabled=true >/dev/null
+          helm template external-secrets external-secrets --repo https://charts.external-secrets.io --version 2.8.0 --namespace external-secrets --set installCRDs=true --set serviceAccount.name=external-secrets >/dev/null
+          helm template external-dns external-dns --repo https://kubernetes-sigs.github.io/external-dns/ --version 1.14.5 --values EKS/helm-values/external_dns.yaml --namespace external-dns >/dev/null
+          helm template traefik traefik --repo https://traefik.github.io/charts --version 29.0.1 --values EKS/helm-values/traefik.yaml --namespace traefik >/dev/null
+          helm template prometheus kube-prometheus-stack --repo https://prometheus-community.github.io/helm-charts --version 86.0.1 --values EKS/helm-values/prometheus.yaml --namespace monitoring >/dev/null
+          helm template grafana grafana --repo https://grafana-community.github.io/helm-charts --version 12.8.0 --values EKS/helm-values/grafana.yaml --namespace monitoring >/dev/null
+          helm template nginx-test EKS/gitops/charts/nginx-test --values EKS/helm-values/nginx-test.yaml --namespace nginx-test >/dev/null
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.1.5
+
+      - uses: azure/setup-kubectl@v4
+
+      - name: Deploy EKS platform
+        working-directory: EKS
+        run: ./scripts/deploy-platform.sh

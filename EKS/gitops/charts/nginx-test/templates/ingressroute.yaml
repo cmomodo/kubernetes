@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/name: nginx-test
   annotations:
     argocd.argoproj.io/sync-wave: {{ .Values.ingressRoute.syncWave | quote }}
-    external-dns.alpha.kubernetes.io/hostname: {{ .Values.ingressRoute.hostname }}
 spec:
   entryPoints:
     {{- range .Values.ingressRoute.entryPoints }}

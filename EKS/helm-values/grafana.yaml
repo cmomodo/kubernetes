@@ -1,6 +1,19 @@
 service:
   type: ClusterIP
 
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    external-dns.alpha.kubernetes.io/hostname: grafana.ceedev.co.uk
+  hosts:
+    - grafana.ceedev.co.uk
+  tls:
+    - secretName: grafana-tls
+      hosts:
+        - grafana.ceedev.co.uk
+
 persistence:
   enabled: true
   storageClassName: gp3

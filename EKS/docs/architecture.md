@@ -2,52 +2,27 @@
 
 ```mermaid
 flowchart TB
-    User[Internet user]
-    DNS[Route53 hosted zone<br/>ceedev.co.uk]
-    ACM[ACM wildcard certificate<br/>*.ceedev.co.uk]
+    User[Internet user] --> DNS[Route53]
+    DNS --> NLB[EKS Auto Mode NLB]
+    NLB --> Traefik[Traefik TLS termination]
+    Traefik --> Apps[Argo CD / Grafana / nginx-test]
 
-    subgraph AWS[AWS us-east-1]
-        subgraph VPC[VPC 10.0.0.0/16]
-            IGW[Internet Gateway]
-            subgraph Public[Three public subnets]
-                NLB[Internet-facing NLB<br/>Traefik Service ports 80/443]
-            end
-            subgraph Private[Three private subnets]
-                EKS[EKS control plane and<br/>Auto Mode compute]
-                Traefik[Traefik Pods x2<br/>entrypoints 8000/8443]
-                App[NGINX test Pod<br/>Argo CD managed]
-                NAT[Three zonal NAT gateways<br/>regional migration paused]
-            end
-        end
+    Terraform --> VPC[VPC and subnets]
+    Terraform --> EKS[EKS Auto Mode]
+    Terraform --> Identity[EKS Pod Identity roles]
+    Terraform --> SM[AWS Secrets Manager]
 
-        IRSA[OIDC provider and IRSA]
-        CM[cert-manager<br/>deployed]
-        ED[ExternalDNS<br/>planned]
-    end
+    Helm[Bootstrap Helm] --> Argo[Argo CD]
+    Argo --> Controllers[cert-manager / ExternalDNS / Prometheus / ESO]
+    Argo --> Traefik
+    Argo --> Apps
 
-    User --> DNS
-    DNS --> NLB
-    ACM -. certificate used by .-> NLB
-    NLB --> Traefik
-    Traefik --> App
-    App --> NAT --> IGW
-
-    EKS --> Traefik
-    IRSA --> CM
-    IRSA --> ED
-    CM -. DNS-01 records .-> DNS
-    ED -. application DNS records .-> DNS
+    Identity --> Controllers
+    ESO[External Secrets Operator] --> SM
+    ESO --> GrafanaSecret[monitoring/grafana-admin]
+    GrafanaSecret --> Apps
 ```
 
-## Traffic and control flow
-
-1. A user requests an application hostname such as `nginx.ceedev.co.uk`.
-2. Route53 resolves the hostname to the NLB created for the Traefik Service.
-3. The NLB forwards traffic to a healthy Traefik Pod in a private subnet.
-4. Traefik matches the request against an IngressRoute and forwards it to the
-   Kubernetes Service for the application.
-5. The Service selects application Pods by label and forwards traffic to one
-   of their Pod IPs.
-
-The NGINX application is defined under `gitops/workloads/nginx-test` and is
-deployed by the Argo CD child Application under `gitops/applications`.
+Terraform finishes AWS provisioning before Helm configures kubectl. The
+bootstrap Argo CD release then reads the `EKS/gitops/applications` tree and
+reconciles each child Application in sync-wave order.

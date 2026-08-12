@@ -1,75 +1,65 @@
-# Reusable deployment and destroy workflow
+# Automated deployment and destroy workflow
 
-Terraform owns the AWS infrastructure. The local Helm CLI owns shared platform
-controllers, and Argo CD owns application resources under `gitops/`. Run
-commands from the repository root:
+Terraform owns AWS infrastructure. Helm bootstraps only Argo CD. Argo CD then
+installs and owns all other Kubernetes controllers and workloads from `EKS/`.
+
+## Prerequisites
+
+- AWS credentials with permission to create the declared VPC, EKS, IAM,
+  Route53, and Secrets Manager resources.
+- The S3 backend bucket declared in `state.tf`.
+- A public Route53 hosted zone matching `domain_name`.
+- Terraform, AWS CLI, Helm, kubectl, and Git installed.
+- All EKS deployment files committed and pushed to `origin/main`.
+
+The state bucket and hosted zone are account bootstrap resources and are not
+created by this stack.
+
+## Local deployment
+
+From the repository's `EKS` directory:
 
 ```bash
-cd /Users/momodou/Documents/kubernetes/kubernetes/AKS
-aws eks --region us-east-1 update-kubeconfig --name aks-cluster
+./scripts/deploy-platform.sh
 ```
 
-## Normal deployment
+The script verifies Git state and AWS authentication, runs Terraform init,
+format validation, validation, plan, and apply, bootstraps Argo CD, applies the
+root Application, and waits for the full platform to become healthy.
 
-Always preview the change before applying it:
+## GitHub Actions deployment
 
-```bash
-terraform init
-terraform fmt
-terraform validate
-terraform plan -out=deployment.tfplan
-terraform apply deployment.tfplan
-```
+The root workflow `.github/workflows/eks-platform.yaml` validates Terraform and
+renders the platform Helm charts on EKS pull requests and pushes. Deployment is
+only performed through a manual workflow dispatch from `main` and requires the
+`AWS_ROLE_TO_ASSUME` environment secret.
 
-The dependency chain is:
+## Dependency chain
 
 ```text
-VPC → EKS → IAM/IRSA + ACM certificate
-                             ↓
-                  Local Helm CLI: platform controllers
-                             ↓
-                         Argo CD
-                             ↓
-                  GitOps Applications
-                             ↓
-               Certificates/IngressRoutes
+Terraform: VPC → EKS Auto Mode → IAM/Pod Identity → Secrets Manager
+                                      ↓
+Bootstrap Helm:                     Argo CD
+                                      ↓
+Argo CD wave 0: Argo CD + cert-manager + External Secrets + gp3 storage
+                                      ↓
+Argo CD wave 1: ExternalDNS + Traefik + Prometheus + SecretStore
+                                      ↓
+Argo CD wave 2:       ClusterIssuer + Grafana ExternalSecret
+                                      ↓
+Argo CD wave 3:        Grafana + Argo route + nginx-test
 ```
 
-After Terraform completes, install every platform chart and bootstrap the
-GitOps root Application with one command:
+## Destroy
 
-```bash
-./scripts/install-platform-addons.sh
-```
-
-From that point, application changes are made in Git and synchronized by Argo
-CD. See [GitOps workflow](gitops.md) for the application workflow and the
-Terraform state migration step.
-
-Helm chart changes do not require a Terraform apply. Re-run
-`./scripts/install-platform-addons.sh`; it reads the required Terraform outputs
-automatically.
-Terraform plans should not contain Helm releases or Kubernetes add-on objects.
-
-## Destroy for a temporary shutdown
-
-Preview the destruction first:
+Always review the destruction plan:
 
 ```bash
 terraform plan -destroy -out=destroy.tfplan
 terraform show destroy.tfplan
-```
-
-The destroy removes all resources tracked in Terraform state, including the
-EKS cluster, VPC, NAT gateways, load balancer, IAM roles, and platform
-resources. Argo-managed application resources disappear with the cluster but
-are not individually tracked by Terraform.
-
-Only after reviewing the plan:
-
-```bash
 terraform apply destroy.tfplan
 ```
 
-The next day, the normal deployment workflow recreates the environment from
-the configuration.
+This removes Terraform-managed AWS resources. Argo-managed Kubernetes
+resources disappear with the EKS cluster and are not individually stored in
+Terraform state.

@@ -24,9 +24,6 @@ spec:
             value: ceedev.co.uk
           - name: txtOwnerId
             value: external-dns
-          # IRSA role ARN — set via CI or update in Git after terraform apply.
-          - name: serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn
-            value: arn:aws:iam::ACCOUNT_ID:role/external-dns-irsa
     - repoURL: https://github.com/cmomodo/kubernetes.git
       targetRevision: main
       ref: values

@@ -18,7 +18,5 @@ spec:
       - dns01:
           route53:
             region: us-east-1
-            hostedZoneID: REPLACE_WITH_ROUTE53_ZONE_ID
-            # IRSA is used — no static credentials. The cert-manager
-            # ServiceAccount (cert-manager:cert-manager) must be annotated
-            # with the cert-manager IRSA role ARN.
+            # The hosted zone is discovered using the controller's
+            # Terraform-managed EKS Pod Identity permissions.

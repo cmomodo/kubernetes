@@ -19,14 +19,6 @@ spec:
         releaseName: traefik
         valueFiles:
           - $values/EKS/helm-values/traefik.yaml
-        parameters:
-          # ACM wildcard certificate ARN — set via CI or update in Git after terraform apply.
-          - name: service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-ssl-cert
-            value: arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/REPLACE_ME
-          - name: service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-ssl-ports
-            value: "443"
-          - name: service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-backend-protocol
-            value: tcp
     - repoURL: https://github.com/cmomodo/kubernetes.git
       targetRevision: main
       ref: values
