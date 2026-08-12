@@ -1,0 +1,132 @@
+# Production-oriented Traefik overrides for chart version 29.0.1.
+#
+# The AWS ACM certificate ARN is injected by the Argo CD Application
+# (gitops/applications/platform/traefik.yaml) via helm.parameters.
+# For local installs, scripts/install-platform-addons.sh passes it with
+# --set-string. Keep this file free of placeholder ARNs.
+
+deployment:
+  replicas: 2
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+
+# Expose Traefik through an internet-facing AWS Network Load Balancer. TLS is
+# terminated by the NLB with the ACM certificate supplied by the installer.
+service:
+  enabled: true
+  type: LoadBalancer
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    # service.beta.kubernetes.io/aws-load-balancer-ssl-cert is injected via
+    # helm.parameters (Argo) or --set-string (local script). Omit the placeholder
+    # so the file is valid YAML without substitution.
+    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+
+ports:
+  web:
+    port: 8000
+    exposedPort: 80
+    expose:
+      default: true
+    redirectTo:
+      port: websecure
+      scheme: https
+      permanent: true
+  websecure:
+    port: 8443
+    exposedPort: 443
+    expose:
+      default: true
+  traefik:
+    expose:
+      default: false
+  metrics:
+    expose:
+      default: false
+
+# Bind the dashboard only to Traefik's non-public management entrypoint.
+ingressRoute:
+  dashboard:
+    enabled: true
+    entryPoints:
+      - traefik
+
+providers:
+  kubernetesCRD:
+    enabled: true
+    allowCrossNamespace: false
+    allowExternalNameServices: false
+  kubernetesIngress:
+    enabled: true
+    allowExternalNameServices: false
+    publishedService:
+      enabled: true
+
+logs:
+  general:
+    level: INFO
+    format: json
+  access:
+    enabled: true
+    format: json
+    fields:
+      general:
+        defaultmode: keep
+      headers:
+        defaultmode: drop
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addEntryPointsLabels: true
+    addServicesLabels: true
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: "{{ template \"traefik.name\" . }}"
+        app.kubernetes.io/instance: "{{ .Release.Name }}-{{ include \"traefik.namespace\" . }}"
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+podSecurityContext:
+  runAsGroup: 65532
+  runAsNonRoot: true
+  runAsUser: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+globalArguments:
+  - "--global.checknewversion=false"
+  - "--global.sendanonymoususage=false"

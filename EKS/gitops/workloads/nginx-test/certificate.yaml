@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: nginx-test-tls
+  namespace: nginx-test
+  labels:
+    app.kubernetes.io/name: nginx-test
+spec:
+  secretName: nginx-test-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - nginx.ceedev.co.uk

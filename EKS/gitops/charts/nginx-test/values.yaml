@@ -1,0 +1,38 @@
+# Default values for nginx-test — overridden by helm-values/nginx-test.yaml in Argo CD
+replicaCount: 1
+
+image:
+  repository: nginx
+  tag: "1.27-alpine"
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+containerPort: 80
+
+service:
+  port: 80
+  targetPort: http
+
+ingressRoute:
+  enabled: true
+  host: nginx.ceedev.co.uk
+  entryPoints:
+    - websecure
+  hostname: nginx.ceedev.co.uk
+  syncWave: "1"
+
+certificate:
+  enabled: true
+  secretName: nginx-test-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - nginx.ceedev.co.uk

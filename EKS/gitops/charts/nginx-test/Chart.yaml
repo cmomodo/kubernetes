@@ -1,0 +1,10 @@
+apiVersion: v2
+name: nginx-test
+description: Templated nginx-test workload — Helm chart wrapping plain manifests from gitops/workloads/nginx-test
+type: application
+version: 0.1.0
+appVersion: "1.27"
+keywords:
+  - nginx
+  - traefik
+  - cert-manager

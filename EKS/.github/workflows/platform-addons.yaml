@@ -1,0 +1,93 @@
+name: platform-addons
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "AKS/helm-values/**"
+      - "AKS/gitops/applications/platform/**"
+      - "AKS/gitops/workloads/platform/**"
+      - "AKS/scripts/install-platform-addons.sh"
+      - ".github/workflows/platform-addons.yaml"
+  pull_request:
+    paths:
+      - "AKS/helm-values/**"
+      - "AKS/gitops/applications/platform/**"
+      - "AKS/gitops/workloads/platform/**"
+      - "AKS/scripts/install-platform-addons.sh"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  # On PRs, only validate (helm template / kubeconform). On main / dispatch, deploy.
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+      - name: Helm template (cert-manager)
+        run: |
+          helm repo add jetstack https://charts.jetstack.io --force-update
+          helm template cert-manager jetstack/cert-manager --version 1.15.3 --values AKS/helm-values/cert-manager.yaml --namespace cert-manager --set crds.enabled=true > /tmp/cert-manager.yaml
+          echo "cert-manager template OK — $(wc -l < /tmp/cert-manager.yaml) lines"
+      - name: Helm template (traefik)
+        run: |
+          helm repo add traefik https://traefik.github.io/charts --force-update
+          helm template traefik traefik/traefik --version 29.0.1 --values AKS/helm-values/traefik.yaml --namespace traefik --set-string "service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-ssl-cert=arn:aws:acm:us-east-1:000000000000:certificate/placeholder" > /tmp/traefik.yaml
+          echo "traefik template OK"
+      - name: Helm template (prometheus)
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+          helm template prometheus prometheus-community/kube-prometheus-stack --version 86.0.1 --values AKS/helm-values/prometheus.yaml --namespace monitoring > /tmp/prometheus.yaml
+          echo "prometheus template OK"
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Terraform init (for outputs)
+        working-directory: AKS
+        run: terraform init -input=false
+
+      - name: Install platform addons
+        working-directory: AKS
+        env:
+          CLUSTER_NAME: aks-cluster
+          AWS_REGION: us-east-1
+          BOOTSTRAP_GITOPS: "true"
+        run: |
+          ./scripts/install-platform-addons.sh
+
+      - name: Verify Argo CD sync
+        run: |
+          kubectl -n argocd wait --for=condition=available deployment/argocd-server --timeout=5m || true
+          kubectl -n argocd get applications

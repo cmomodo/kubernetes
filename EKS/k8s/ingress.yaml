@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app
+  namespace: my-app # same ns as the Service
+  annotations:
+    # external-dns creates the Route53 record from the host below
+    external-dns.alpha.kubernetes.io/hostname: app.ceedev.co.uk
+    # cert-manager (once ClusterIssuer exists)
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - app.ceedev.co.uk
+      secretName: my-app-tls
+  rules:
+    - host: app.ceedev.co.uk
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-app # must match Service metadata.name
+                port:
+                  number: 80

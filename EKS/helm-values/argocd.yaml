@@ -1,0 +1,90 @@
+# Argo CD Helm values
+# Domain is injected by the Argo CD Application (gitops/applications/platform/argocd.yaml)
+# via helm.parameters `global.domain`, or by scripts/install-platform-addons.sh
+# with --set-string for bootstrap installs.
+
+global:
+  # Used by the chart to build URLs shown in the UI and in webhook payloads.
+  domain: argocd.ceedev.co.uk
+
+configs:
+  params:
+    # Traefik terminates TLS at the NLB/entrypoint, so argocd-server serves
+    # plain HTTP (and gRPC-Web) on port 80. Without this, Traefik would talk
+    # HTTPS to a self-signed cert and every request would 502.
+    server.insecure: true
+
+  cm:
+    # Let Kustomize sources inflate Helm charts (`helm template` under the hood).
+    kustomize.buildOptions: --enable-helm
+    # Fall back to a full resync every 3 minutes if a webhook is missed.
+    timeout.reconciliation: 180s
+
+  rbac:
+    # Logged-in users with no explicit role get read-only access.
+    policy.default: role:readonly
+
+# ── Components ────────────────────────────────────────────────────────────────
+
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+
+server:
+  replicas: 2
+  # Traefik fronts the UI, so no LoadBalancer / chart-managed Ingress here.
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
+repoServer:
+  replicas: 2
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+applicationSet:
+  replicas: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+# Single-instance Redis is fine for dev. For production set `redis-ha.enabled`
+# and drop the standalone `redis` deployment.
+redis:
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+# ── Disabled until needed ─────────────────────────────────────────────────────
+
+# Dex is only required for SSO (GitHub/OIDC). Local admin login works without it.
+dex:
+  enabled: false
+
+notifications:
+  enabled: false

@@ -1,0 +1,25 @@
+{{- if .Values.ingressRoute.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: nginx-test
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: nginx-test
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.ingressRoute.syncWave | quote }}
+    external-dns.alpha.kubernetes.io/hostname: {{ .Values.ingressRoute.hostname }}
+spec:
+  entryPoints:
+    {{- range .Values.ingressRoute.entryPoints }}
+    - {{ . }}
+    {{- end }}
+  routes:
+    - match: Host(`{{ .Values.ingressRoute.host }}`)
+      kind: Rule
+      services:
+        - name: nginx-test
+          port: {{ .Values.service.port }}
+  tls:
+    secretName: {{ .Values.certificate.secretName }}
+{{- end }}

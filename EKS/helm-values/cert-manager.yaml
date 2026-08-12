@@ -1,0 +1,16 @@
+ingressShim:
+  defaultACMEChallengeType: dns01
+  defaultDNS01SolverName: route53
+
+extraArgs:
+  - --dns01-recursive-nameservers=8.8.8.8:53,8.8.4.4:53
+  - --dns01-recursive-nameservers-only
+
+# serviceAccount IRSA annotation is injected by the Argo CD Application
+# (gitops/applications/platform/cert-manager.yaml) via helm.parameters.
+# For local installs, scripts/install-platform-addons.sh sets it with
+# --set-string. Keep this file free of placeholder ARNs so it is valid YAML
+# when used directly by Argo CD.
+serviceAccount:
+  annotations: {}
+  # eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT_ID:role/cert-manager-irsa"

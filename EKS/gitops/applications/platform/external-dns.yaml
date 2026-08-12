@@ -1,0 +1,47 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  sources:
+    - repoURL: https://kubernetes-sigs.github.io/external-dns/
+      chart: external-dns
+      targetRevision: 1.14.5
+      helm:
+        releaseName: external-dns
+        valueFiles:
+          - $values/EKS/helm-values/external_dns.yaml
+        parameters:
+          - name: domainFilters[0]
+            value: ceedev.co.uk
+          - name: txtOwnerId
+            value: external-dns
+          # IRSA role ARN — set via CI or update in Git after terraform apply.
+          - name: serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn
+            value: arn:aws:iam::ACCOUNT_ID:role/external-dns-irsa
+    - repoURL: https://github.com/cmomodo/kubernetes.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

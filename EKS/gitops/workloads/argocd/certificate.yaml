@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: argocd-tls
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd
+spec:
+  # Keep this distinct from argocd-server-tls because the Argo CD chart uses
+  # that name for its own server TLS configuration.
+  secretName: argocd-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - argocd.ceedev.co.uk

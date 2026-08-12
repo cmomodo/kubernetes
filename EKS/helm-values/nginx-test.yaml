@@ -1,0 +1,45 @@
+# nginx-test Helm values — overrides for gitops/charts/nginx-test
+# Referenced by Argo CD Application via $values/EKS/helm-values/nginx-test.yaml
+# Mirrors current plain manifests in gitops/workloads/nginx-test
+
+replicaCount: 1
+
+image:
+  repository: nginx
+  tag: "1.27-alpine"
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+containerPort: 80
+
+service:
+  port: 80
+  targetPort: http
+
+ingressRoute:
+  enabled: true
+  host: nginx.ceedev.co.uk
+  entryPoints:
+    - websecure
+  # external-dns hostname — defaults to ingressRoute.host
+  hostname: nginx.ceedev.co.uk
+  syncWave: "1"
+
+certificate:
+  enabled: true
+  secretName: nginx-test-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - nginx.ceedev.co.uk
+
+# Namespace managed by Argo CD CreateNamespace=true; keep for Helm template context
+namespace: nginx-test
