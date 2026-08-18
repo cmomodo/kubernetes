@@ -45,6 +45,9 @@ kubectl expose deployment     # Expose a deployment as a service
 kubectl scale deployment      # Scale a deployment
 ```
 
+eks system design
+<img src="" alt="eks system design">
+
 ## Additional Resources
 
 - [Official Kubernetes Documentation](https://kubernetes.io/docs/home/)

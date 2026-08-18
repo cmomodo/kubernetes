@@ -1,5 +1,9 @@
 # Architecture
 
+## EKS system design
+
+![EKS system design](../eks-system-design.png)
+
 ```mermaid
 flowchart TB
     User[Internet user] --> DNS[Route53]
