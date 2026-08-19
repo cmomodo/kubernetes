@@ -44,7 +44,7 @@ fi
 
 aws sts get-caller-identity >/dev/null
 
-terraform -chdir="$repo_root" init -input=false
+terraform -chdir="$repo_root" init -reconfigure -input=false
 terraform -chdir="$repo_root" fmt -check -recursive
 terraform -chdir="$repo_root" validate
 terraform -chdir="$repo_root" plan -input=false -out="$plan_file"
